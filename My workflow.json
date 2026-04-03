@@ -1,0 +1,297 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour",
+              "minute": 15
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -256
+      ],
+      "id": "69f35e82-b782-405a-b8fb-feb289b78792",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8RZ2vUbHwKqhvqwa",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a4e047e9-0763-4741-b053-175f16ba186e",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        448,
+        16
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "R5htVFmULV6P4GkX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputText": "={{ $json.snippet }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "Order",
+              "description": "Customer placing a new order for products"
+            },
+            {
+              "category": "Support",
+              "description": "Customer needs help or has questions"
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "Classify the following email into one of these categories based on the subject and content"
+        }
+      },
+      "id": "74ff028e-1531-4cb1-bffc-557177f10c18",
+      "name": "Text Classifier",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [
+        448,
+        -256
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "7ee67e93-3dc4-4e47-8299-6fa6cda6fb7e",
+      "name": "Rate Limit Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        -256
+      ],
+      "webhookId": "80cb46d9-2e26-4d13-ae50-8e124bb11704"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a customer service assistant. Generate a professional reply to this customer email.\n\nOriginal Subject: {{ $json.Subject }}\nEmail Content: {{ $json.snippet }}\n\nYour task: Write a helpful, friendly response addressing their needs.\n\nIMPORTANT: You must respond with ONLY a valid JSON object in this exact format:\n{\n  \"subject\": \"your reply subject line here\",\n  \"body\": \"your reply email body here\"\n}\n\nDo not include any text before or after the JSON object."
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        -448
+      ],
+      "id": "9aeef1cf-a817-4bfc-9c44-54ce8aec358b",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "R5htVFmULV6P4GkX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ JSON.parse($json.candidates[0].content.parts[0].text).subject }}",
+        "message": "={{ JSON.parse($json.candidates[0].content.parts[0].text).body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        -448
+      ],
+      "id": "f6c633c9-4f25-4678-a4a3-9104a48a0ade",
+      "name": "Create a draft",
+      "webhookId": "66cfa2bd-c213-43a2-8eef-90fb8afb5c8e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8RZ2vUbHwKqhvqwa",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a customer support specialist. Generate a professional support response to this customer email.\n\nOriginal Subject: {{ $('Gmail Trigger').item.json.subject }}\nEmail Content: {{ $('Gmail Trigger').item.json.snippet }}\n\nCreate a helpful support response that:\n1. Acknowledges their issue with empathy\n2. Provides troubleshooting steps or solutions\n3. Offers to escalate if needed\n4. Includes contact information for further help\n\nIMPORTANT: Return ONLY a valid JSON object:\n{\n  \"subject\": \"Re: [original subject]\",\n  \"body\": \"email content here\"\n}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        816,
+        -112
+      ],
+      "id": "9b369ac7-82ec-4a86-8d3c-fd5c6564bc24",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "R5htVFmULV6P4GkX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ JSON.parse($json.candidates[0].content.parts[0].text).subject }}",
+        "message": "={{ JSON.parse($json.candidates[0].content.parts[0].text).body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        -112
+      ],
+      "id": "a04e26fe-33a0-4336-b425-1590d2284c23",
+      "name": "Create a draft1",
+      "webhookId": "546901f3-3918-4828-b89d-da73e12ba773",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "8RZ2vUbHwKqhvqwa",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Text Classifier",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Classifier": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Create a draft1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "8dcb7bec-e26a-45e6-8afc-9a868d6eadd7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cdd13dfa3827a35343d4a97ab981ed9f31eacad3bef658aa9de44b62c55b343e"
+  },
+  "id": "5HMUFF2h96pLR481",
+  "tags": []
+}
